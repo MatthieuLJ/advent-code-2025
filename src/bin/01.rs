@@ -59,17 +59,42 @@ fn main() -> Result<()> {
     //endregion
 
     //region Part 2
-    // println!("\n=== Part 2 ===");
-    //
-    // fn part2<R: BufRead>(reader: R) -> Result<usize> {
-    //     Ok(0)
-    // }
-    //
-    // assert_eq!(0, part2(BufReader::new(TEST.as_bytes()))?);
-    //
-    // let input_file = BufReader::new(File::open(INPUT_FILE)?);
-    // let result = time_snippet!(part2(input_file)?);
-    // println!("Result = {}", result);
+    println!("\n=== Part 2 ===");
+    
+    fn part2<R: BufRead>(reader: R) -> Result<usize> {
+        let mut dial: i32 = 50;
+        let mut answer: usize = 0;
+
+        // TODO: Solve Part 1 of the puzzle
+        for line in reader.lines() {
+            let l = line.unwrap();
+            let (direction, count) = l.split_at(1);
+            let mut factor : i32 = 1;
+            match direction.chars().next() {
+                Some('L') => factor = -1,
+                Some('R') => factor = 1,
+                _ => println!("Don't understand the direction"),
+            }
+            let speed = i32::from_str_radix(count, 10).unwrap();
+            if factor == 1 {
+                answer += ((dial + speed) / 100) as usize;
+            } else {
+                answer += ((100 + speed - dial) / 100) as usize;
+                if dial == 0 {
+                    answer -= 1;
+                }
+            }
+            dial += factor * speed;
+            dial = ((dial % 100) + 100)%100;
+        }
+        Ok(answer)
+    }
+    
+    assert_eq!(6, part2(BufReader::new(TEST.as_bytes()))?);
+    
+    let input_file = BufReader::new(File::open(INPUT_FILE)?);
+    let result = time_snippet!(part2(input_file)?);
+    println!("Result = {}", result);
     //endregion
 
     Ok(())
