@@ -2,7 +2,6 @@ use adv_code_2025::*;
 use anyhow::*;
 use code_timing_macros::time_snippet;
 use const_format::concatcp;
-use itertools::max;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -15,7 +14,8 @@ const TEST: &str = "\
 824824821-824824827,2121212118-2121212124\
 ";
 
-fn count_ids(range: &str) -> Result<usize> {
+// for part 1
+fn add_ids(range: &str) -> Result<usize> {
     let bounds: Vec<&str> = range.split("-").collect();
     assert_eq!(bounds.len(), 2);
 
@@ -72,6 +72,38 @@ fn count_ids(range: &str) -> Result<usize> {
     }
 }
 
+fn check_if_invalid_id(candidate: usize, num_slices: usize) -> Result<bool> {
+    let num_len = candidate.to_string().len();
+    let chunk = &candidate.to_string()[..num_len / num_slices];
+    let repeated = chunk.repeat(num_slices);
+
+    return Ok(usize::from_str_radix(&repeated, 10).unwrap() == candidate);
+}
+
+// for part 2
+fn add_ids_abrit(range: &str) -> Result<usize> {
+    let bounds: Vec<&str> = range.split("-").collect();
+    assert_eq!(bounds.len(), 2);
+    let mut answer: usize = 0;
+
+    let lower_number = usize::from_str_radix(bounds.get(0).unwrap(), 10).unwrap();
+    let higher_number = usize::from_str_radix(bounds.get(1).unwrap(), 10).unwrap();
+
+    for candidate in lower_number..higher_number + 1 {
+        let num_len = candidate.to_string().len();
+        for num_slices in 2..num_len + 1 {
+            if num_len % num_slices == 0 {
+                if check_if_invalid_id(candidate, num_slices).unwrap() {
+                    //println!("Adding id {}", candidate);
+                    answer += candidate;
+                    break;
+                }
+            }
+        }
+    }
+    Ok(answer)
+}
+
 fn main() -> Result<()> {
     start_day(DAY);
 
@@ -86,7 +118,7 @@ fn main() -> Result<()> {
 
         let ranges: Vec<String> = input.split(',').map(|s| s.to_string()).collect();
         for r in ranges {
-            answer += count_ids(&r).unwrap();
+            answer += add_ids(&r).unwrap();
         }
 
         Ok(answer)
@@ -101,17 +133,26 @@ fn main() -> Result<()> {
     //endregion
 
     //region Part 2
-    // println!("\n=== Part 2 ===");
-    //
-    // fn part2<R: BufRead>(reader: R) -> Result<usize> {
-    //     Ok(0)
-    // }
-    //
-    // assert_eq!(0, part2(BufReader::new(TEST.as_bytes()))?);
-    //
-    // let input_file = BufReader::new(File::open(INPUT_FILE)?);
-    // let result = time_snippet!(part2(input_file)?);
-    // println!("Result = {}", result);
+    println!("\n=== Part 2 ===");
+
+    fn part2<R: BufRead>(mut reader: R) -> Result<usize> {
+        let mut answer = 0;
+        let mut input: String = String::new();
+        reader.read_to_string(&mut input).unwrap();
+
+        let ranges: Vec<String> = input.split(',').map(|s| s.to_string()).collect();
+        for r in ranges {
+            answer += add_ids_abrit(&r).unwrap();
+        }
+
+        Ok(answer)
+    }
+
+    assert_eq!(4174379265, part2(BufReader::new(TEST.as_bytes()))?);
+
+    let input_file = BufReader::new(File::open(INPUT_FILE)?);
+    let result = time_snippet!(part2(input_file)?);
+    println!("Result = {}", result);
     //endregion
 
     Ok(())
