@@ -15,7 +15,7 @@ const TEST: &str = "\
 818181911112111";
 
 fn find_max_joltage(input: &str) -> Result<usize> {
-    println!("Finding max joltage in {input}");
+    //println!("Finding max joltage in {input}");
     // convert the string into a Vec<usize>
     let digits: Vec<usize> = input
         .chars()
@@ -23,23 +23,37 @@ fn find_max_joltage(input: &str) -> Result<usize> {
         .collect();
     let mut tens_max = digits.get(0).unwrap();
     let mut unit_max = digits.get(1).unwrap();
-    println!("Initialized max_tens to {tens_max} and unit_max to {unit_max}");
     for i in 1..digits.len() - 1 {
         if digits.get(i).unwrap() > tens_max {
             tens_max = digits.get(i).unwrap();
             unit_max = digits.get(i + 1).unwrap();
-            println!("tens_max now at {tens_max} and unit {unit_max}");
         } else if digits.get(i).unwrap() > unit_max {
             unit_max = digits.get(i).unwrap();
-            println!("unit max now {unit_max}");
         }
     }
     if digits.get(digits.len() - 1).unwrap() > unit_max {
         unit_max = digits.get(digits.len() - 1).unwrap();
-        println!("unit max now {unit_max}");
     }
-    println!("Returning {}", tens_max * 10 + unit_max);
     Ok(tens_max * 10 + unit_max)
+}
+
+fn find_max_joltage_n_batteries(digits: Vec<usize>, num_batteries: usize) -> Result<usize> {
+    let mut top_max = digits.get(0).unwrap();
+    let mut top_max_index: usize = 0;
+    //println!("Looking for the best {num_batteries} in {:?}", digits);
+    for i in 1..digits.len() - (num_batteries - 1) {
+        if digits.get(i).unwrap() > top_max {
+            top_max = digits.get(i).unwrap();
+            top_max_index = i;
+        }
+    }
+    if num_batteries > 1 {
+        Ok((top_max * usize::pow(10, num_batteries as u32 - 1))
+            + find_max_joltage_n_batteries(digits[top_max_index + 1..].to_vec(), num_batteries - 1)
+                .unwrap())
+    } else {
+        Ok(*top_max)
+    }
 }
 
 fn main() -> Result<()> {
@@ -49,7 +63,6 @@ fn main() -> Result<()> {
     println!("=== Part 1 ===");
 
     fn part1<R: BufRead>(reader: R) -> Result<usize> {
-        // TODO: Solve Part 1 of the puzzle
         let lines = reader.lines();
         let mut answer = 0;
         for l in lines {
@@ -66,17 +79,28 @@ fn main() -> Result<()> {
     //endregion
 
     //region Part 2
-    // println!("\n=== Part 2 ===");
-    //
-    // fn part2<R: BufRead>(reader: R) -> Result<usize> {
-    //     Ok(0)
-    // }
-    //
-    // assert_eq!(0, part2(BufReader::new(TEST.as_bytes()))?);
-    //
-    // let input_file = BufReader::new(File::open(INPUT_FILE)?);
-    // let result = time_snippet!(part2(input_file)?);
-    // println!("Result = {}", result);
+    println!("\n=== Part 2 ===");
+
+    fn part2<R: BufRead>(reader: R) -> Result<usize> {
+        let lines = reader.lines();
+        let mut answer = 0;
+        for l in lines {
+            let digits: Vec<usize> = l
+                .unwrap()
+                .chars()
+                .map(|c| usize::from_str_radix(&c.to_string(), 10).unwrap())
+                .collect();
+            let new_bank = find_max_joltage_n_batteries(digits, 12).unwrap();
+            answer += new_bank;
+        }
+        Ok(answer)
+    }
+
+    assert_eq!(3121910778619, part2(BufReader::new(TEST.as_bytes()))?);
+
+    let input_file = BufReader::new(File::open(INPUT_FILE)?);
+    let result = time_snippet!(part2(input_file)?);
+    println!("Result = {}", result);
     //endregion
 
     Ok(())
