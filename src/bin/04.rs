@@ -46,13 +46,13 @@ fn read_grid<R: BufRead>(reader: R, grid: &mut Vec<Vec<u8>>) -> Result<bool> {
     Ok(true)
 }
 
-fn count_movable_boxes(grid: Vec<Vec<u8>>) -> Result<usize> {
+fn count_movable_boxes(grid: &mut Vec<Vec<u8>>) -> Result<usize> {
     let mut answer = 0;
 
-    for (y, row) in grid.iter().enumerate() {
-        for (x, cell) in row.into_iter().enumerate() {
-            if *cell == 1 {
-                let count = grid[y - 1][x - 1]
+    for y in 0..grid.len() {
+        for x in 0..grid[y].len() {
+            if grid[y][x] != 0 {
+                let mut count = grid[y - 1][x - 1]
                     + grid[y - 1][x]
                     + grid[y - 1][x + 1]
                     + grid[y][x - 1]
@@ -60,9 +60,21 @@ fn count_movable_boxes(grid: Vec<Vec<u8>>) -> Result<usize> {
                     + grid[y + 1][x - 1]
                     + grid[y + 1][x]
                     + grid[y + 1][x + 1];
+                // add up the tens and the units
+                count = (count / 10) + (count % 10);
                 if count < 4 {
+                    // move the accessible crates to the tens
+                    grid[y][x] = 10;
                     answer += 1;
                 }
+            }
+        }
+    }
+    // for part 2, we want to clear anything that was accessible
+    for y in 0..grid.len() {
+        for x in 0..grid[y].len() {
+            if grid[y][x] > 1 {
+                grid[y][x] = 0;
             }
         }
     }
@@ -79,7 +91,7 @@ fn main() -> Result<()> {
         let mut grid: Vec<Vec<u8>> = Vec::new();
         read_grid(reader, &mut grid).expect("Could not read the file");
 
-        Ok(count_movable_boxes(grid).unwrap())
+        Ok(count_movable_boxes(&mut grid).unwrap())
     }
 
     assert_eq!(13, part1(BufReader::new(TEST.as_bytes()))?);
@@ -93,7 +105,18 @@ fn main() -> Result<()> {
     println!("\n=== Part 2 ===");
 
     fn part2<R: BufRead>(reader: R) -> Result<usize> {
-        Ok(0)
+        let mut grid: Vec<Vec<u8>> = Vec::new();
+        read_grid(reader, &mut grid).expect("Could not read the file");
+
+        let mut answer = 0;
+        loop {
+            let this_cycle = count_movable_boxes(&mut grid).unwrap();
+            answer += this_cycle;
+            if this_cycle == 0 {
+                break;
+            }
+        }
+        Ok(answer)
     }
 
     assert_eq!(43, part2(BufReader::new(TEST.as_bytes()))?);
