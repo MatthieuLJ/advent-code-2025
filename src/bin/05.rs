@@ -3,10 +3,10 @@ use anyhow::*;
 use code_timing_macros::time_snippet;
 use const_format::concatcp;
 use regex::Regex;
+use std::cmp;
 use std::collections::VecDeque;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::cmp;
 
 const DAY: &str = "05";
 const INPUT_FILE: &str = concatcp!("input/", DAY, ".txt");
@@ -38,10 +38,14 @@ impl std::fmt::Debug for Segment {
     }
 }
 
-fn insert_new_range(start: usize, end: usize, ingredient_ranges: &mut Vec<Segment>) -> Result<usize> {
+fn insert_new_range(
+    start: usize,
+    end: usize,
+    ingredient_ranges: &mut Vec<Segment>,
+) -> Result<usize> {
     let mut index: usize = 0;
 
-    println!("Inserting {start} - {end}");
+    //println!("Inserting {start} - {end}");
 
     loop {
         if index >= ingredient_ranges.len() {
@@ -74,14 +78,13 @@ fn insert_new_range(start: usize, end: usize, ingredient_ranges: &mut Vec<Segmen
         return Ok(ingredient_ranges.len());
     }
 
-    // Now we have 
+    // Now we have
     // ingredient_ranges[index].end >= start - 1
     // and
     // ingredient_ranges[index].start <= end + 1
     // so there is an overlap
     ingredient_ranges[index].start = cmp::min(ingredient_ranges[index].start, start);
     let mut new_end = cmp::max(ingredient_ranges[index].end, end);
-    
 
     loop {
         if index >= ingredient_ranges.len() - 1 {
@@ -91,14 +94,17 @@ fn insert_new_range(start: usize, end: usize, ingredient_ranges: &mut Vec<Segmen
             break;
         }
         new_end = cmp::max(ingredient_ranges[index + 1].end, new_end);
-        ingredient_ranges.remove(index+1);
+        ingredient_ranges.remove(index + 1);
     }
     ingredient_ranges[index].end = new_end;
-    
+
     Ok(ingredient_ranges.len())
 }
 
-fn read_ranges(lines: &mut VecDeque<String>, ingredient_ranges: &mut Vec<Segment>) -> Result<usize> {
+fn read_ranges(
+    lines: &mut VecDeque<String>,
+    ingredient_ranges: &mut Vec<Segment>,
+) -> Result<usize> {
     let re = Regex::new(r"^(\d*)-(\d*)$").unwrap();
     loop {
         let l = lines.pop_front().unwrap();
@@ -117,11 +123,14 @@ fn read_ranges(lines: &mut VecDeque<String>, ingredient_ranges: &mut Vec<Segment
         .expect("Failed to insert range");
     }
 
-    println!("Now ranges are {:?}", ingredient_ranges);
+    //println!("Now ranges are {:?}", ingredient_ranges);
     Ok(0)
 }
 
-fn check_fresh_ingredients(lines: &mut VecDeque<String>, ingredient_ranges: &Vec<Segment>) -> Result<usize> {
+fn check_fresh_ingredients(
+    lines: &mut VecDeque<String>,
+    ingredient_ranges: &Vec<Segment>,
+) -> Result<usize> {
     let mut answer = 0;
     loop {
         if lines.len() == 0 {
@@ -141,6 +150,15 @@ fn check_fresh_ingredients(lines: &mut VecDeque<String>, ingredient_ranges: &Vec
     Ok(answer)
 }
 
+fn count_fresh(ingredient_ranges: &Vec<Segment>) -> Result<usize> {
+    let mut answer = 0;
+
+    for r in ingredient_ranges {
+        answer += r.end - r.start + 1;
+    }
+    Ok(answer)
+}
+
 fn main() -> Result<()> {
     start_day(DAY);
 
@@ -151,7 +169,8 @@ fn main() -> Result<()> {
         let mut ingredient_ranges: Vec<Segment> = Vec::new();
         let mut lines: VecDeque<String> = reader.lines().flatten().collect();
         read_ranges(&mut lines, &mut ingredient_ranges).expect("I failed!");
-        let answer = check_fresh_ingredients(&mut lines, &ingredient_ranges).expect("Could not check ingredients");
+        let answer = check_fresh_ingredients(&mut lines, &ingredient_ranges)
+            .expect("Could not check ingredients");
         Ok(answer)
     }
 
@@ -164,17 +183,21 @@ fn main() -> Result<()> {
     //endregion
 
     //region Part 2
-    // println!("\n=== Part 2 ===");
-    //
-    // fn part2<R: BufRead>(reader: R) -> Result<usize> {
-    //     Ok(0)
-    // }
-    //
-    // assert_eq!(0, part2(BufReader::new(TEST.as_bytes()))?);
-    //
-    // let input_file = BufReader::new(File::open(INPUT_FILE)?);
-    // let result = time_snippet!(part2(input_file)?);
-    // println!("Result = {}", result);
+    println!("\n=== Part 2 ===");
+
+    fn part2<R: BufRead>(reader: R) -> Result<usize> {
+        let mut ingredient_ranges: Vec<Segment> = Vec::new();
+        let mut lines: VecDeque<String> = reader.lines().flatten().collect();
+        read_ranges(&mut lines, &mut ingredient_ranges).expect("I failed!");
+        let answer = count_fresh(&ingredient_ranges).unwrap();
+        Ok(answer)
+    }
+
+    assert_eq!(14, part2(BufReader::new(TEST.as_bytes()))?);
+
+    let input_file = BufReader::new(File::open(INPUT_FILE)?);
+    let result = time_snippet!(part2(input_file)?);
+    println!("Result = {}", result);
     //endregion
 
     Ok(())
