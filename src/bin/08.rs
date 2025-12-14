@@ -108,7 +108,10 @@ fn main() -> Result<()> {
                 continue;
             }
 
-            println!("Connecting {:?} and {:?}", coordinates[point1], coordinates[point2]);
+            println!(
+                "Connecting {:?} and {:?}",
+                coordinates[point1], coordinates[point2]
+            );
 
             let old_network = cmp::max(networks[point1], networks[point2]);
             let new_network = cmp::min(networks[point1], networks[point2]);
@@ -117,7 +120,7 @@ fn main() -> Result<()> {
                     *n = new_network;
                 }
             }
-            
+
             //println!("Networks are {:?}", networks);
 
             if made_connections >= num_connections {
@@ -145,17 +148,56 @@ fn main() -> Result<()> {
     //endregion
 
     //region Part 2
-    // println!("\n=== Part 2 ===");
-    //
-    // fn part2<R: BufRead>(reader: R) -> Result<usize> {
-    //     Ok(0)
-    // }
-    //
-    // assert_eq!(0, part2(BufReader::new(TEST.as_bytes()))?);
-    //
-    // let input_file = BufReader::new(File::open(INPUT_FILE)?);
-    // let result = time_snippet!(part2(input_file)?);
-    // println!("Result = {}", result);
+    println!("\n=== Part 2 ===");
+
+    fn part2<R: BufRead>(reader: R) -> Result<usize> {
+        let coordinates: Vec<(usize, usize, usize)> = read_file(reader);
+        let mut distances = calculate_distances(&coordinates);
+        let num_points = coordinates.len();
+        let mut networks: Vec<usize> = (0..num_points).collect();
+        let mut answer;
+
+        loop {
+            let (point1, point2) = find_min_distance(&distances);
+            answer = coordinates[point1].0 * coordinates[point2].0;
+            distances[point1][point2] = usize::MAX;
+            if networks[point1] == networks[point2] {
+                continue;
+            }
+
+            println!(
+                "Connecting {:?} and {:?}",
+                coordinates[point1], coordinates[point2]
+            );
+
+            let old_network = cmp::max(networks[point1], networks[point2]);
+            let new_network = cmp::min(networks[point1], networks[point2]);
+            for n in networks.iter_mut() {
+                if *n == old_network {
+                    *n = new_network;
+                }
+            }
+
+            //println!("Networks are {:?}", networks);
+            // look for a network different than 0
+            let indices: Vec<usize> = networks
+                .iter()
+                .enumerate()
+                .filter_map(|(ind, n)| if *n != 0 { Some(ind) } else { None })
+                .collect();
+            if indices.len() == 0 {
+                break;
+            }
+        }
+
+        Ok(answer)
+    }
+
+    assert_eq!(25272, part2(BufReader::new(TEST.as_bytes()))?);
+
+    let input_file = BufReader::new(File::open(INPUT_FILE)?);
+    let result = time_snippet!(part2(input_file)?);
+    println!("Result = {}", result);
     //endregion
 
     Ok(())
