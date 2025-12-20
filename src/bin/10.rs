@@ -92,11 +92,10 @@ fn part1_fewest_button_presses(
 // it was interesting, but not practical here (and too generic)
 // The algorithm was described here:
 // https://www.reddit.com/r/adventofcode/comments/1pk87hl/2025_day_10_part_2_bifurcate_your_way_to_victory/
-fn part1_all_button_combinations(num_lights: u32, target: usize, buttons: &Vec<usize>) -> Vec<usize> {
+fn part1_all_button_combinations(target: usize, buttons: &Vec<usize>) -> Vec<usize> {
     let num_buttons = buttons.len();
     let mut answer: Vec<usize> = Vec::new();
 
-    // we don't want to try pressing no buttons
     // the bits of try_button will tell us which buttons we are trying to press
     for try_button in 1..usize::pow(2, num_buttons as u32) {
         let mut try_result: usize = 0;
@@ -137,83 +136,91 @@ fn part2_process_line(machine: String) -> Result<usize> {
     }
     println!("Got joltage {:?}", joltage);
 
-    part2_fewest_button_presses(&joltage, &buttons)
+    let mut cache: HashMap<Vec<usize>, usize> = HashMap::new();
+
+    Ok(part2_fewest_button_presses(&joltage, &buttons, &mut cache))
 }
 
-fn distance_between_joltages(source: &Vec<usize>, dest: &Vec<usize>) -> usize {
-    assert_eq!(source.len(), dest.len());
-    let mut answer = 0;
-    for i in 0..source.len() {
-        answer = cmp::max(answer, dest[i] - source[i]);
+fn part2_fewest_button_presses(
+    joltage: &Vec<usize>,
+    buttons: &Vec<usize>,
+    cache: &mut HashMap<Vec<usize>, usize>,
+) -> usize {
+    println!("Trying to find the solution to reach {:?}", joltage);
+    if cache.contains_key(joltage) {
+        return *cache.get(joltage).unwrap();
     }
-    answer
-}
 
-fn part2_fewest_button_presses(joltage: &Vec<usize>, buttons: &Vec<usize>) -> Result<usize> {
-    let mut djikstra: HashMap<Vec<usize>, usize> = HashMap::new();
-    let mut visited: HashMap<Vec<usize>, bool> = HashMap::new();
-    let num_lights = joltage.len();
-    let start = vec![0; joltage.len()];
-    djikstra.insert(start, 0);
-
-    loop {
-        // find the smallest distance spent so far + minimum possible distance to target
-        let mut min_path = usize::MAX;
-        let mut min_index = Vec::new();
-        let mut path_so_far = usize::MAX;
-        for (index, d) in &djikstra {
-            if *d < min_path && !visited.contains_key(index) {
-                min_index = (*index).clone();
-                min_path = *d;
-                path_so_far = *d;
-            }
+    // first create the target based on the evenness of the joltages
+    let mut target = 0;
+    for (index, j) in joltage.into_iter().enumerate() {
+        if *j % 2 == 1 {
+            target |= 1 << index;
         }
-        print!(
-            "So far {} and made {}, size of visited {}, going from {:?}\r",
-            min_path,
-            path_so_far,
-            visited.len(),
-            &min_index
-        );
+    }
 
-        //println!("Starting from {:?}", min_index);
+    let mut answer = usize::MAX;
 
-        assert_ne!(path_so_far, usize::MAX);
-        assert!(!visited.contains_key(&min_index));
-        visited.insert(min_index.clone(), true);
+    let mut all_even = true;
+    for light_index in 0..joltage.len() {
+        if joltage[light_index] % 2 != 0 {
+            all_even = false;
+            break;
+        }
+    }
+    if all_even {
+        let mut new_joltage = joltage.clone();
+        for light_index in 0..joltage.len() {
+            new_joltage[light_index] /= 2;
+        }
+        answer = part2_fewest_button_presses(&new_joltage, buttons, cache);
+        if answer != usize::MAX {
+            answer *= 2;
+        }
+    }
 
-        // try all the buttons and see if there is any path to update
-        let new_distance = path_so_far + 1;
+    let possible_button_presses = part1_all_button_combinations(target, buttons);
 
-        'buttons: for b in buttons {
-            let mut new_dest = min_index.clone();
-            let mut on_target = true;
-
-            for i in 0..num_lights {
-                if (b & (1 << i)) != 0 {
-                    new_dest[i] += 1;
-                    if new_dest[i] > joltage[i] {
-                        continue 'buttons;
+    'buttons: for test_buttons in possible_button_presses {
+        let mut new_joltage = joltage.clone();
+        let mut temp_answer = 0;
+        for button_index in 0..buttons.len() {
+            if test_buttons & (1 << button_index) != 0 {
+                // this button was pressed
+                temp_answer += 1;
+                for light_index in 0..joltage.len() {
+                    if buttons[button_index] & (1 << light_index) != 0 {
+                        if new_joltage[light_index] == 0 {
+                            continue 'buttons;
+                        }
+                        new_joltage[light_index] -= 1;
                     }
                 }
-                if new_dest[i] != joltage[i] {
-                    on_target = false;
-                }
-            }
-
-            if on_target {
-                println!("Got one machine with {new_distance}");
-                return Ok(new_distance);
-            }
-
-            if !djikstra.contains_key(&new_dest) {
-                //println!("Can get to {:?} in {new_distance}", new_dest);
-                djikstra.insert(new_dest, new_distance);
             }
         }
-
-        //println!("Visited is now {:?}", visited.keys());
+        let mut all_clear = true;
+        for light_index in 0..joltage.len() {
+            if new_joltage[light_index] > 0 {
+                all_clear = false;
+            }
+            if new_joltage[light_index] % 2 != 0 {
+                panic!("All new_joltage should be even here");
+            }
+            new_joltage[light_index] /= 2;
+        }
+        if !all_clear {
+            let recurse_answer = part2_fewest_button_presses(&new_joltage, buttons, cache);
+            if recurse_answer == usize::MAX {
+                continue 'buttons;
+            }
+            temp_answer += 2 * recurse_answer;
+        }
+        answer = cmp::min(temp_answer, answer);
     }
+
+    println!("Could get to {:?} with {answer} button presses", joltage);
+    cache.insert(joltage.clone(), answer);
+    answer
 }
 
 fn main() -> Result<()> {
